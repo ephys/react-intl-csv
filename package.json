@@ -1,0 +1,39 @@
+{
+  "name": "react-intl-csv",
+  "version": "0.1.0",
+  "description": "Convert react-intl JSON files to and from CSV files",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node --experimental-modules .",
+    "build": "babel src --out-dir lib",
+    "build:watch": "npm run build -- --watch",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "react-intl",
+    "json",
+    "csv",
+    "converter"
+  ],
+  "author": "Guylian Cox <guyliancox@gmail.com>",
+  "license": "MIT",
+  "bin": {
+    "react-intl-csv": "./lib/index.js"
+  },
+  "homepage": "https://github.com/foobarhq/react-intl-csv#readme",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:foobarhq/react-intl-csv.git"
+  },
+  "dependencies": {
+    "commander": "^2.11.0",
+    "csvtojson": "^1.1.9",
+    "fs-extra": "^4.0.2",
+    "json2csv": "^3.11.4",
+    "mz": "^2.7.0"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-preset-env": "^1.6.1"
+  }
+}
