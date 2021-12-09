@@ -4,10 +4,7 @@
   "description": "Convert react-intl JSON files to and from CSV files",
   "main": "src/index.js",
   "scripts": {
-    "start": "node .",
-    "build": "babel src --out-dir lib",
-    "build:watch": "npm run build -- --watch",
-    "prepublishOnly": "npm run build"
+    "start": "node ."
   },
   "keywords": [
     "react-intl",
@@ -32,8 +29,5 @@
     "json-stable-stringify": "^1.0.1",
     "json2csv": "^5.0.6"
   },
-  "devDependencies": {
-    "@babel/cli": "^7.16.0",
-    "@babel/preset-env": "^7.16.4"
-  }
+  "devDependencies": {}
 }
