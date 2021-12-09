@@ -1,79 +1,71 @@
 #!/usr/bin/env node
 
-import path from 'path';
-import fs from 'mz/fs';
-import fsExtra from 'fs-extra';
-import commander from 'commander';
-import json2csv from 'json2csv';
+import { program } from 'commander';
 import csv2json from 'csvtojson';
-import pkg from '../package.json';
+import fs from 'fs/promises';
+import { parse as json2csv } from 'json2csv';
+import jsonStringify from 'json-stable-stringify';
+import path from 'path';
 
-commander
+const pkg = JSON.parse(await fs.readFile(
+  new URL('../package.json', import.meta.url),
+  'utf-8',
+));
+
+const idKeys = ['id', 'key', 'hash'];
+
+program
   .version(pkg.version)
   .usage('<from> [options]')
   .option('--to-csv <to>', String)
   .option('--to-json <to>', Boolean)
   .parse(process.argv);
 
-if (Boolean(commander.toJson) === Boolean(commander.toCsv)) {
+const options = program.opts();
+
+if (Boolean(options.toJson) === Boolean(options.toCsv)) {
   console.error('Specify --to-csv OR --to-json');
 }
 
-const from = commander.args[0];
+const from = program.args[0];
 
-if (commander.toCsv) {
-  convertToCsv(from, commander.toCsv);
+if (options.toCsv) {
+  await convertToCsv(from, options.toCsv);
 }
 
-if (commander.toJson) {
-  convertToJson(from, commander.toJson);
+if (options.toJson) {
+  await convertToJson(from, options.toJson);
 }
 
-function convertToJson(from, to) {
+async function convertToJson(from, to) {
 
-  const translationsByLocale = {};
+  const rows = await csv2json().fromFile(from);
 
-  return new Promise((resolve, reject) => {
-    csv2json()
-      .fromFile(from)
-      .on('header', (header) => {
-        for (const locale of header) {
-          if (locale === 'key') {
-            continue;
-          }
+  if (rows.length === 0) {
+    throw new Error('Empty CSV');
+  }
 
-          translationsByLocale[locale] = {};
-        }
-      })
-      .on('json', (jsonObj) => {
-        const key = jsonObj.key;
+  const keys = Object.keys(rows[0]);
+  const localeKeys = keys.filter(key => !idKeys.includes(key) && !key.startsWith('_'))
+  const idKey = keys.find(key => idKeys.includes(key) || (key.startsWith('_') && idKeys.includes(key.substring(1))))
 
-        for (const locale of Object.keys(jsonObj)) {
-          if (locale === 'key') {
-            continue;
-          }
+  const translationsByLocale = Object.create(null);
+  for (const locale of localeKeys) {
+    translationsByLocale[locale] = Object.create(null);
+  }
 
-          translationsByLocale[locale][key] = jsonObj[locale];
-        }
-      })
-      .on('done', async (error) => {
-        if (error) {
-          return void reject(error);
-        }
+  for (const row of rows) {
+    for (const locale of localeKeys) {
+      const rowId = row[idKey];
+      translationsByLocale[locale][rowId] = row[locale].trim();
+    }
+  }
 
-        await fsExtra.ensureDir(to);
+  await Promise.all(localeKeys.map(locale => {
+    const fileName = path.join(to, `${locale}.json`);
 
-        const locales = Object.keys(translationsByLocale);
-
-        await Promise.all(locales.map(async locale => {
-          const fileName = path.join(to, `${locale}.json`);
-
-          await fs.writeFile(fileName, JSON.stringify(translationsByLocale[locale], null, 2));
-        }));
-
-        resolve();
-      });
-  });
+    return fs.writeFile(fileName, jsonStringify(translationsByLocale[locale], { space: 2 }) + '\n');
+  }));
 }
 
 async function convertToCsv(from, to) {
@@ -95,7 +87,7 @@ async function convertToCsv(from, to) {
 
     const filePath = path.join(from, file);
     try {
-      translations = JSON.parse(await fs.readFile(filePath));
+      translations = JSON.parse(await fs.readFile(filePath, 'utf-8'));
     } catch (e) {
       console.error(`Error while parsing file ${filePath}.`);
       throw e;
@@ -124,7 +116,7 @@ async function convertToCsv(from, to) {
     json.push(row);
   }
 
-  await fs.writeFile(to, json2csv({ data: json }));
+  await fs.writeFile(to, json2csv(json));
 }
 
 function getLocaleFromFileName(file) {
